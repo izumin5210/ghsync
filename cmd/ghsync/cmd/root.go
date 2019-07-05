@@ -7,5 +7,9 @@ func New() *cobra.Command {
 		Use: "ghsync",
 	}
 
+	cmd.AddCommand(
+		newPushCmd(),
+	)
+
 	return cmd
 }
