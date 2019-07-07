@@ -98,11 +98,11 @@ func BuildMetadata(ctx context.Context) (*OriginMetadata, error) {
 }
 
 func (m *OriginMetadata) GetPRURL() string {
-	return fmt.Sprintf("https://github.com/%s/pull/%d", m.URL, m.PR)
+	return fmt.Sprintf("%s/pull/%d", m.URL, m.PR)
 }
 
 func (m *OriginMetadata) GetCommitURL() string {
-	return fmt.Sprintf("https://github.com/%s/commit/%s", m.URL, m.SHA)
+	return fmt.Sprintf("%s/commit/%s", m.URL, m.SHA)
 }
 
 func (m *OriginMetadata) GetSlug() string {

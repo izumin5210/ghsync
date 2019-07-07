@@ -200,34 +200,44 @@ func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Cont
 		return err
 	}
 
-	if len(pulls) == 0 {
-		title := fmt.Sprintf("Update %s", cont.GetPath())
-		body := fmt.Sprintf("from %s", r.originMeta.GetPRURL())
-		pull, _, err := r.cli.PullRequests.Create(ctx, r.owner, r.repo, &github.NewPullRequest{
-			Base:  &r.base,
-			Head:  &r.head,
-			Title: &title,
-			Body:  &body,
-		})
-		if err != nil {
-			return err
+	if len(pulls) > 0 {
+		urls := make([]string, len(pulls))
+		for i, p := range pulls {
+			urls[i] = p.GetURL()
 		}
-
-		msg := fmt.Sprintf("Created a new pull request!\n:point_right: %s", pull.GetURL())
-		_, _, err = r.cli.Issues.CreateComment(ctx, r.originMeta.Owner, r.originMeta.Repo, r.originMeta.PR, &github.IssueComment{
-			Body: &msg,
-		})
-		if err != nil {
-			return err
-		}
-
-		zap.L().Info("a new pull request was craeted",
-			zap.Int("number", pull.GetNumber()),
-			zap.String("url", pull.GetURL()),
-			zap.String("html_url", pull.GetHTMLURL()),
-			zap.String("message", pull.GetTitle()),
+		zap.L().Info("skip creating a pull request because already exist",
+			zap.String("branch", r.head),
+			zap.Strings("urls", urls),
 		)
+		return nil
 	}
+
+	title := fmt.Sprintf("Update %s", cont.GetPath())
+	body := fmt.Sprintf("from %s", r.originMeta.GetPRURL())
+	pull, _, err := r.cli.PullRequests.Create(ctx, r.owner, r.repo, &github.NewPullRequest{
+		Base:  &r.base,
+		Head:  &r.head,
+		Title: &title,
+		Body:  &body,
+	})
+	if err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf("Created a new pull request!\n:point_right: %s", pull.GetHTMLURL())
+	_, _, err = r.cli.Issues.CreateComment(ctx, r.originMeta.Owner, r.originMeta.Repo, r.originMeta.PR, &github.IssueComment{
+		Body: &msg,
+	})
+	if err != nil {
+		return err
+	}
+
+	zap.L().Info("a new pull request was craeted",
+		zap.Int("number", pull.GetNumber()),
+		zap.String("url", pull.GetURL()),
+		zap.String("html_url", pull.GetHTMLURL()),
+		zap.String("message", pull.GetTitle()),
+	)
 
 	return nil
 }
