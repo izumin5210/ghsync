@@ -40,7 +40,7 @@ func (f *githubContentRepositoryFactoryImpl) Create(ctx context.Context, slug, b
 	}
 
 	if baseRef == nil {
-		baseRef, _, err = f.cli.Git.GetRef(ctx, r.owner, r.repo, "heads/"+head)
+		baseRef, _, err = f.cli.Git.GetRef(ctx, r.owner, r.repo, "heads/"+base)
 		if err != nil {
 			return nil, err
 		}
