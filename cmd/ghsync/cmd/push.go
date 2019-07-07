@@ -24,15 +24,14 @@ func newPushCmd() *cobra.Command {
 	var (
 		origin = ghsync.BuildMetadata()
 		target struct {
-			Slug      string
-			Base      string
-			HEAD      string
-			Submodule string
+			Slug string
+			Base string
+			HEAD string
 		}
 	)
 
 	cmd := &cobra.Command{
-		Use:  "push <owner>/<repo>",
+		Use:  "push <owner>/<repo> [<src>]:<dst>",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			ctx := context.Background()
@@ -55,12 +54,17 @@ func newPushCmd() *cobra.Command {
 				return err
 			}
 
-			if target.Submodule != "" {
-				cont, err := repo.Get(ctx, target.Submodule)
-				if err != nil {
-					return err
-				}
+			paths := strings.SplitN(args[1], ":", 2)
+			src, dst := paths[0], paths[1]
+			_ = src
 
+			cont, err := repo.Get(ctx, dst)
+			if err != nil {
+				return err
+			}
+
+			switch cont.(type) {
+			case ghsync.Submodule:
 				ok, err := cont.Update(&ghsync.LocalSubmodule{SHA: origin.SHA})
 				if err != nil {
 					return err
@@ -71,7 +75,7 @@ func newPushCmd() *cobra.Command {
 						return err
 					}
 				}
-			} else {
+			default:
 				return errors.New("currently support only submodule mode")
 			}
 
@@ -81,7 +85,6 @@ func newPushCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&target.Submodule, "submodule", "", "Destination path of git submodule")
 	cmd.PersistentFlags().StringVar(&target.Base, "base", "master", "Base branch")
 	cmd.PersistentFlags().StringVar(&target.HEAD, "head", "", "HEAD branch")
 
