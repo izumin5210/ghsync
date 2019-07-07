@@ -1,0 +1,57 @@
+version: 2.1
+
+aliases:
+  filter-default: &filter-default
+    filters:
+      tags:
+        only: /.*/
+  filter-release: &filter-release
+    filters:
+      branches:
+        ignore: /.*/
+      tags:
+        only: /^v\d+\.\d+\.\d+$/
+
+orbs:
+  go-module: timakin/go-module@0.3.0
+  go-crossbuild: izumin5210/go-crossbuild@dev:alpha
+  github-release: izumin5210/github-release@dev:alpha
+  homebrew: izumin5210/homebrew@dev:alpha
+
+executors:
+  default:
+    docker:
+    - image: circleci/golang:1.12
+    environment:
+    - GO111MODULE: "on"
+
+workflows:
+  build:
+    jobs:
+    - go-module/download:
+        <<: *filter-default
+        executor: default
+        checkout: true
+        persist-to-workspace: true
+        vendoring: true
+
+    - go-crossbuild/build:
+        <<: *filter-default
+        executor: default
+        packages: ./cmd/ghsync
+        requires:
+        - go-module/download
+
+    - github-release/create:
+        <<: *filter-release
+        executor: default
+        context: tool-releasing
+        requires:
+        - go-crossbuild/build
+
+    - homebrew/update:
+        <<: *filter-release
+        executor: default
+        context: tool-releasing
+        requires:
+        - github-release/create
