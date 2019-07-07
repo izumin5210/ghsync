@@ -5,15 +5,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func New() *cobra.Command {
+func New(io clib.IO) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "ghsync",
 	}
 
 	cmd.AddCommand(
 		newPushCmd(),
+		newVersionCmd(),
 	)
 
+	cmd.SetOut(io.Out())
+	cmd.SetErr(io.Err())
+	cmd.SetIn(io.In())
 	clib.AddLoggingFlags(cmd)
 
 	return cmd

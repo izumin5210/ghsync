@@ -18,5 +18,5 @@ func main() {
 }
 
 func run() error {
-	return cmd.New().Execute()
+	return cmd.New(clib.Stdio()).Execute()
 }
