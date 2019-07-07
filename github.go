@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
+	"go.uber.org/zap"
 )
 
 func NewGithubContentRepositoryFactory(
@@ -48,6 +49,8 @@ func (f *githubContentRepositoryFactoryImpl) Create(ctx context.Context, slug, b
 
 	r.baseRef = baseRef
 
+	zap.L().Debug("base reference was fetched", zap.Any("ref", baseRef))
+
 	return r, nil
 }
 
@@ -66,6 +69,9 @@ func (r *githubContentRepositoryImpl) Get(ctx context.Context, path string) (Con
 	if err != nil {
 		return nil, err
 	}
+
+	zap.L().Debug("target content was fetched", zap.Any("content", f))
+
 	if d != nil {
 		// TODO: not yet implemented
 		return nil, fmt.Errorf("unsupported content type: %s", f.GetType())
@@ -92,6 +98,8 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 			return err
 		}
 		r.baseRef = ref
+
+		zap.L().Debug("new base reference was created", zap.Any("ref", ref))
 	}
 
 	var tree *github.Tree
@@ -109,6 +117,7 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 		if err != nil {
 			return err
 		}
+		zap.L().Debug("new tree was created", zap.Any("tree", tree))
 	default:
 		return fmt.Errorf("unsupported content type: %T", cont)
 	}
@@ -164,6 +173,13 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 	}
 	r.baseRef = ref
 
+	zap.L().Info("a new commit was created",
+		zap.String("sha", commit.GetSHA()),
+		zap.String("url", commit.GetURL()),
+		zap.String("html_url", commit.GetHTMLURL()),
+		zap.String("message", commit.GetMessage()),
+	)
+
 	return nil
 }
 
@@ -196,6 +212,13 @@ func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Cont
 		if err != nil {
 			return err
 		}
+
+		zap.L().Info("a new pull request was craeted",
+			zap.Int("number", pull.GetNumber()),
+			zap.String("url", pull.GetURL()),
+			zap.String("html_url", pull.GetHTMLURL()),
+			zap.String("message", pull.GetTitle()),
+		)
 	}
 
 	return nil

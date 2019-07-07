@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
@@ -58,6 +59,13 @@ func newPushCmd() *cobra.Command {
 			src, dst := paths[0], paths[1]
 			_ = src
 
+			zap.L().Debug("parameters",
+				zap.String("src", src),
+				zap.String("dest", dst),
+				zap.Any("origin", origin),
+				zap.Any("target", target),
+			)
+
 			cont, err := repo.Get(ctx, dst)
 			if err != nil {
 				return err
@@ -74,6 +82,8 @@ func newPushCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
+				} else {
+					zap.L().Info("the content has not been updated")
 				}
 			default:
 				return errors.New("currently support only submodule mode")

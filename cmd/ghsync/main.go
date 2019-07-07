@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/izumin5210/clig/pkg/clib"
 	"github.com/izumin5210/ghsync/cmd/ghsync/cmd"
 )
 
 func main() {
+	defer clib.Close()
+
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
