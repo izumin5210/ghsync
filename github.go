@@ -142,12 +142,15 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 	}
 
 	date := time.Now()
-	msg := strings.Join([]string{
+	lines := []string{
 		fmt.Sprintf("Use %s@%s", r.originMeta.GetSlug(), r.originMeta.SHA[:7]),
 		"",
-		"pull request: " + r.originMeta.GetPRURL(),
 		"commit: " + r.originMeta.GetCommitURL(),
-	}, "\n")
+	}
+	if r.originMeta.IsPR() {
+		lines = append(lines, "pull request: "+r.originMeta.GetPRURL())
+	}
+	msg := strings.Join(lines, "\n")
 	commit, _, err := r.cli.Git.CreateCommit(ctx, r.owner, r.repo, &github.Commit{
 		Message: &msg,
 		Author: &github.CommitAuthor{
@@ -184,6 +187,11 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 }
 
 func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Context, cont Content) error {
+	if !r.originMeta.IsPR() {
+		zap.L().Info("skip creating a pull request because this is not PR build")
+		return nil
+	}
+
 	pulls, _, err := r.cli.PullRequests.List(ctx, r.owner, r.repo, &github.PullRequestListOptions{
 		State: "all",
 		Head:  r.head,

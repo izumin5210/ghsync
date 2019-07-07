@@ -23,7 +23,6 @@ func newPushCmd() *cobra.Command {
 	viper.SetFs(fs)
 
 	var (
-		origin = ghsync.BuildMetadata()
 		target struct {
 			Slug string
 			Base string
@@ -36,23 +35,20 @@ func newPushCmd() *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			ctx := context.Background()
-			ts := tokenSource()
-			hc := httpClient(ctx, ts)
-			gc := githubClient(hc)
+			origin, err := ghsync.BuildMetadata(ctx)
+			if err != nil {
+				return err
+			}
 
 			target.Slug = args[0]
 			if target.HEAD == "" {
 				chunks := []string{"ghsync", origin.Owner, origin.Repo}
-				if origin.PR != 0 {
-					chunks = append(chunks, fmt.Sprint(origin.PR))
+				if origin.IsPR() {
+					chunks = append(chunks, "pull", fmt.Sprint(origin.PR))
+				} else {
+					chunks = append(chunks, "branch", origin.Branch)
 				}
 				target.HEAD = strings.Join(chunks, "/")
-			}
-
-			factory := ghsync.NewGithubContentRepositoryFactory(gc)
-			repo, err := factory.Create(ctx, target.Slug, target.Base, target.HEAD, origin)
-			if err != nil {
-				return err
 			}
 
 			paths := strings.SplitN(args[1], ":", 2)
@@ -65,6 +61,16 @@ func newPushCmd() *cobra.Command {
 				zap.Any("origin", origin),
 				zap.Any("target", target),
 			)
+
+			ts := tokenSource()
+			hc := httpClient(ctx, ts)
+			gc := githubClient(hc)
+
+			factory := ghsync.NewGithubContentRepositoryFactory(gc)
+			repo, err := factory.Create(ctx, target.Slug, target.Base, target.HEAD, origin)
+			if err != nil {
+				return err
+			}
 
 			cont, err := repo.Get(ctx, dst)
 			if err != nil {
