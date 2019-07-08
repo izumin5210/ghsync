@@ -210,7 +210,7 @@ func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Cont
 			urls[i] = p.GetURL()
 		}
 		zap.L().Info("skip creating a pull request because already exist",
-			zap.String("branch", r.head),
+			zap.String("branch", r.originMeta.Owner+":"+r.head),
 			zap.Strings("urls", urls),
 		)
 		return nil
