@@ -136,9 +136,13 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 }
 
 func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *github.Tree) error {
-	author, _, err := r.cli.Users.Get(ctx, "")
+	user, err := GetUser(ctx)
 	if err != nil {
-		return err
+		author, _, err := r.cli.Users.Get(ctx, "")
+		if err != nil {
+			return err
+		}
+		user = &User{Name: author.GetName(), Email: author.GetEmail()}
 	}
 
 	date := time.Now()
@@ -154,8 +158,8 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 	commit, _, err := r.cli.Git.CreateCommit(ctx, r.owner, r.repo, &github.Commit{
 		Message: &msg,
 		Author: &github.CommitAuthor{
-			Name:  author.Name,
-			Email: author.Email,
+			Name:  &user.Name,
+			Email: &user.Email,
 			Date:  &date,
 		},
 		Parents: []github.Commit{{SHA: r.baseRef.GetObject().SHA}},
