@@ -11,6 +11,22 @@ import (
 	"strings"
 )
 
+type User struct {
+	Name, Email string
+}
+
+func GetUser(ctx context.Context) (*User, error) {
+	u := new(User)
+	u.Name, u.Email = os.Getenv("GIT_NAME"), os.Getenv("GIT_EMAIL")
+	if u.Name == "" {
+		return nil, errors.New("GIT_NAME is required")
+	}
+	if u.Email == "" {
+		return nil, errors.New("GIT_EMAIL is required")
+	}
+	return u, nil
+}
+
 // OriginMetadata contains the current repository metadata.
 type OriginMetadata struct {
 	Owner  string
