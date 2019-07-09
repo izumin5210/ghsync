@@ -197,7 +197,7 @@ func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Cont
 	}
 
 	pulls, _, err := r.cli.PullRequests.List(ctx, r.owner, r.repo, &github.PullRequestListOptions{
-		State: "all",
+		State: "open",
 		Head:  r.originMeta.Owner + ":" + r.head,
 	})
 	if err != nil {
