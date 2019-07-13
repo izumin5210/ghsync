@@ -146,15 +146,11 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 	}
 
 	date := time.Now()
-	lines := []string{
+	msg := strings.Join([]string{
 		fmt.Sprintf("Use %s@%s", r.originMeta.GetSlug(), r.originMeta.SHA[:7]),
 		"",
 		"commit: " + r.originMeta.GetCommitURL(),
-	}
-	if r.originMeta.IsPR() {
-		lines = append(lines, "pull request: "+r.originMeta.GetPRURL())
-	}
-	msg := strings.Join(lines, "\n")
+	}, "\n")
 	commit, _, err := r.cli.Git.CreateCommit(ctx, r.owner, r.repo, &github.Commit{
 		Message: &msg,
 		Author: &github.CommitAuthor{
