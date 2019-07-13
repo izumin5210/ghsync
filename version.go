@@ -2,5 +2,5 @@ package ghsync
 
 const (
 	// Version represents a version of ghsync package.
-	Version = "0.0.5"
+	Version = "0.0.6"
 )
