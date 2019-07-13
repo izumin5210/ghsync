@@ -12,6 +12,7 @@ func New(io clib.IO) *cobra.Command {
 
 	cmd.AddCommand(
 		newPushCmd(),
+		newCleanCmd(),
 		newVersionCmd(),
 	)
 
