@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const TracebackLimit = 100
+
 func NewGithubContentRepositoryFactory(
 	cli *github.Client,
 ) ContentRepositoryFactory {
@@ -88,6 +90,11 @@ func (r *githubContentRepositoryImpl) Get(ctx context.Context, path string) (Con
 }
 
 func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) error {
+	baseCommit, err := r.findBaseCommit(ctx, cont, TracebackLimit)
+	if err != nil {
+		return err
+	}
+
 	if strings.TrimPrefix(r.baseRef.GetRef(), "refs/heads/") != r.head {
 		refStr := "heads/" + r.head
 		ref, _, err := r.cli.Git.CreateRef(ctx, r.owner, r.repo, &github.Reference{
@@ -111,7 +118,7 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 		typ := "commit"
 		sha := cont.GetSHA()
 		var err error
-		tree, _, err = r.cli.Git.CreateTree(ctx, r.owner, r.repo, r.baseRef.GetObject().GetSHA(), []github.TreeEntry{
+		tree, _, err = r.cli.Git.CreateTree(ctx, r.owner, r.repo, baseCommit.GetSHA(), []github.TreeEntry{
 			{Path: &path, Mode: &mode, Type: &typ, SHA: &sha},
 		})
 		if err != nil {
@@ -122,7 +129,7 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 		return fmt.Errorf("unsupported content type: %T", cont)
 	}
 
-	err := r.createCommit(ctx, tree)
+	err = r.createCommit(ctx, baseCommit, tree)
 	if err != nil {
 		return err
 	}
@@ -135,7 +142,58 @@ func (r *githubContentRepositoryImpl) Update(ctx context.Context, cont Content) 
 	return nil
 }
 
-func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *github.Tree) error {
+func (r *githubContentRepositoryImpl) findBaseCommit(ctx context.Context, cont Content, tracebackLimit int) (*github.Commit, error) {
+	baseRef, _, err := r.cli.Git.GetRef(ctx, r.owner, r.repo, "heads/"+r.base)
+	if err != nil {
+		return nil, err
+	}
+
+	commit, _, err := r.cli.Git.GetCommit(ctx, r.owner, r.repo, baseRef.GetObject().GetSHA())
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < tracebackLimit; i++ {
+		switch cont := cont.(type) {
+		case Submodule:
+			path := cont.GetPath()
+			f, d, _, err := r.cli.Repositories.GetContents(ctx, r.owner, r.repo, path, &github.RepositoryContentGetOptions{
+				Ref: commit.GetSHA(),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			if d != nil || f.GetType() != "submodule" {
+				return nil, fmt.Errorf("unsupported content type: %s", f.GetType())
+			}
+
+			compar, _, err := r.cli.Repositories.CompareCommits(ctx, r.originMeta.Owner, r.originMeta.Repo, f.GetSHA(), cont.GetSHA())
+			if err != nil {
+				return nil, err
+			}
+			if compar.GetBehindBy() == 0 {
+				return commit, nil
+			}
+		default:
+			return nil, fmt.Errorf("unsupported content type: %T", cont)
+		}
+
+		if len(commit.Parents) == 0 {
+			break
+		}
+
+		nextCommit, _, err := r.cli.Git.GetCommit(ctx, r.owner, r.repo, commit.Parents[0].GetSHA())
+		if err != nil {
+			return nil, err
+		}
+		commit = nextCommit
+	}
+
+	return nil, fmt.Errorf("no appropriate base commit found")
+}
+
+func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, baseCommit *github.Commit, tree *github.Tree) error {
 	user, err := GetUser(ctx)
 	if err != nil {
 		author, _, err := r.cli.Users.Get(ctx, "")
@@ -158,7 +216,7 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 			Email: &user.Email,
 			Date:  &date,
 		},
-		Parents: []github.Commit{{SHA: r.baseRef.GetObject().SHA}},
+		Parents: []github.Commit{{SHA: baseCommit.SHA}},
 		Tree:    tree,
 	})
 	if err != nil {
@@ -170,7 +228,7 @@ func (r *githubContentRepositoryImpl) createCommit(ctx context.Context, tree *gi
 		Object: &github.GitObject{
 			SHA: commit.SHA,
 		},
-	}, false)
+	}, true)
 	if err != nil {
 		return err
 	}
