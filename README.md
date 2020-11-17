@@ -11,10 +11,12 @@
     - `brew install izumin5210/tools/ghsync`
 - macOS, Linux
     - ```bash
-      curl -Lo grapi https://github.com/izumin5210/ghsync/releases/download/v0.0.1/ghsync_linux_amd64.zip
-      unzip ghsync_linux_amd64.zip
+      cd /tmp
+      curl -Lo grapi https://github.com/izumin5210/ghsync/releases/download/v0.0.8/ghsync_linux_amd64.tar.gz
+      tar -xf grapi
       sudo mv ghsync_linux_amd64/ghsync /usr/local/bin
-      rm ghsync_linux_amd64.zip
+      rm grapi
+      rm -r ghsync_linux_amd64
       ```
 - others
     - `go get github.com/izumin5210/ghsync/cmd/ghsync`
