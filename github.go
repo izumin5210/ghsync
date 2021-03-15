@@ -282,14 +282,6 @@ func (r *githubContentRepositoryImpl) createPullRequestIfNeeded(ctx context.Cont
 		return err
 	}
 
-	msg := fmt.Sprintf("Created a new pull request!\n:point_right: %s", pull.GetHTMLURL())
-	_, _, err = r.cli.Issues.CreateComment(ctx, r.originMeta.Owner, r.originMeta.Repo, r.originMeta.PR, &github.IssueComment{
-		Body: &msg,
-	})
-	if err != nil {
-		return err
-	}
-
 	zap.L().Info("a new pull request was craeted",
 		zap.Int("number", pull.GetNumber()),
 		zap.String("url", pull.GetURL()),
